@@ -5,9 +5,13 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -26,24 +30,38 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: false
 
       - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses
+        shell: bash
+        run: |
+          set +o pipefail
+          yes | sdkmanager --licenses
+          set -o pipefail
 
       - name: Install Android SDK packages
-        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
-      - name: Extract NOTERA project
+      - name: Extract NOTERA
         run: |
           unzip -q NOTERA-v2_1.zip -d extracted
+          test -f extracted/NOTERA/index.html
           mkdir -p www
           cp -r extracted/NOTERA/. www/
-          test -f www/index.html
 
-      - name: Initialize Capacitor
+      - name: Initialize Node project
+        run: npm init -y
+
+      - name: Install Capacitor
         run: |
-          npm init -y
-          npm install @capacitor/core@6.2.1 @capacitor/cli@6.2.1 @capacitor/android@6.2.1
+          npm install @capacitor/core@6.2.1
+          npm install @capacitor/cli@6.2.1
+          npm install @capacitor/android@6.2.1
 
       - name: Configure NOTERA
         run: |
@@ -60,15 +78,15 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Build APK
+      - name: Build NOTERA APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Upload NOTERA APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: NOTERA-APK
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
