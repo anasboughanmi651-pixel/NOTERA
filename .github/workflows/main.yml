@@ -1,0 +1,68 @@
+
+name: Build NOTERA APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Extract NOTERA project
+        run: |
+          unzip -q NOTERA-v2_1.zip -d extracted
+          test -f extracted/NOTERA/index.html
+          mkdir -p www
+          cp -r extracted/NOTERA/. www/
+
+      - name: Initialize Capacitor
+        run: |
+          npm init -y
+          npm install @capacitor/core@6.2.1 @capacitor/cli@6.2.1 @capacitor/android@6.2.1
+
+      - name: Configure NOTERA
+        run: |
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.notera.app",
+            "appName": "NOTERA",
+            "webDir": "www"
+          }
+          EOF
+
+      - name: Create Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Upload NOTERA APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NOTERA-APK
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
