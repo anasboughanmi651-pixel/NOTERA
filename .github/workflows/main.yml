@@ -27,12 +27,18 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
       - name: Extract NOTERA project
         run: |
           unzip -q NOTERA-v2_1.zip -d extracted
-          test -f extracted/NOTERA/index.html
           mkdir -p www
           cp -r extracted/NOTERA/. www/
+          test -f www/index.html
 
       - name: Initialize Capacitor
         run: |
