@@ -11,7 +11,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
+
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
       - name: Checkout repository
@@ -28,24 +32,26 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          accept-android-sdk-licenses: false
+      - name: Check Android SDK
+        run: |
+          echo "Android SDK: $ANDROID_HOME"
+          test -d "$ANDROID_HOME/cmdline-tools"
+          ls "$ANDROID_HOME/cmdline-tools"
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
 
       - name: Accept Android SDK licenses
         shell: bash
         run: |
           set +o pipefail
-          yes | sdkmanager --licenses
-          set -o pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" --licenses
 
       - name: Install Android SDK packages
         run: |
-          sdkmanager --install \
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            --sdk_root="$ANDROID_HOME" \
             "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
+            "platforms;android-34" \
+            "build-tools;34.0.0"
 
       - name: Extract NOTERA
         run: |
@@ -84,7 +90,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Upload APK
+      - name: Upload NOTERA APK
         uses: actions/upload-artifact@v4
         with:
           name: NOTERA-APK
